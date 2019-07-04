@@ -1,0 +1,7 @@
+# NPM
+node_modules
+
+.travis/id_rsa
+uploads
+tmp
+.env

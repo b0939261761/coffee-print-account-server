@@ -1,0 +1,44 @@
+language: node_js
+
+env:
+  SSH_USER: root
+  APP_PATH: /root/coffee-print/coffee-print-docker
+  DEPLOY_PATH: /root/coffee-print/coffee-print-account-server
+  DOCKER_APP_PATH: app
+  SERVICE_NAME: coffee-print
+
+sudo: false
+
+git:
+  depth: false
+
+branches:
+  only:
+    - master
+
+before_install:
+  - openssl aes-256-cbc -K $encrypted_7a73c6c32b3d_key -iv $encrypted_7a73c6c32b3d_iv -in ./.travis/id_rsa.enc -out ./.travis/id_rsa -d
+  - eval "$(ssh-agent -s)"
+  - chmod 600 ./.travis/id_rsa
+  - echo -e "Host $SSH_HOST\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+  - ssh-keyscan $SSH_HOST >> ~/.ssh/known_hosts
+  - ssh-add ./.travis/id_rsa
+
+install: true
+
+script:
+  - echo "npm test temporarily disabled"
+
+deploy:
+  provider: script
+  skip_cleanup: true
+  script: bash -c '
+    ssh root@$SSH_HOST "systemctl stop $SERVICE_NAME
+    && rsync --recursive ./* $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
+    && ssh root@$SSH_HOST "
+      cd $APP_PATH
+      && docker-compose run app bash -c \"
+        cd $DOCKER_APP_PATH && npm install \"
+      && systemctl start $SERVICE_NAME"'
+  on:
+    branch: master
