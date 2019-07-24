@@ -39,7 +39,6 @@ deploy:
     && ssh $SSH_USER@$SSH_HOST "
       cd $APP_PATH
       && docker-compose run app bash -c \"
-        cd $DOCKER_APP_PATH && npm install && npx sequelize db:migrate \"
-      && systemctl start $SERVICE_NAME"'
+        cd $DOCKER_APP_PATH && npm install && npx sequelize db:migrate \" "'
   on:
     branch: master
