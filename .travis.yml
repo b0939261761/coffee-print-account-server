@@ -33,7 +33,8 @@ deploy:
   provider: script
   skip_cleanup: true
   script: bash -c '
-    ssh root@$SSH_HOST "systemctl stop $SERVICE_NAME"
+    ssh root@$SSH_HOST "systemctl stop $SERVICE_NAME
+      && rm -rf $DEPLOY_PATH"
     && rsync --recursive ./* $SSH_USER@$SSH_HOST:$DEPLOY_PATH/'
   on:
     branch: master
