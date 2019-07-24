@@ -3,27 +3,115 @@
 const routes = require('express').Router();
 const models = require('../models');
 
+// -- CREATE CATEGORY ------------------------------------------------------
+
+routes.post('', async (req, res, next) => {
+  const { quantity, active } = req.body;
+  const quantityCartridge = req.body.quantityCartridge || 1;
+
+  const cartridges = [];
+  for (let i = 1; i <= quantityCartridge; ++i) {
+    // eslint-disable-next-line no-await-in-loop
+    const cartridge = await models.Cartridge.create(
+      { quantity, active }
+    );
+
+    cartridges.push(cartridge.code);
+  }
+
+  res.json({ items: cartridges });
+});
+
+// -- DELETE ------------------------------------------------------
+
+routes.delete('/:id', async (req, res, next) => {
+  const { id } = req.params;
+  await models.Cartridge.destroy({ where: { id } });
+  return res.json({ id });
+});
+
+
+// -- UPDATE STATIC ------------------------------------------------------
+
+routes.patch('/statistics/:id', async (req, res, next) => {
+  const { id } = req.params;
+  const { deviceId, printed = 0 } = req.body;
+
+  const response = await models.Cartridge.update(
+    { lastDeviceId: deviceId, printed }, { returning: true, where: { id } }
+  );
+
+  const cartridge = response && response[1] && response[1][0];
+
+  if (!cartridge) return next(new Error('CARTRIDGE_DOES_NOT_EXIST'));
+
+  return res.json({
+    quantity: cartridge.quantity,
+    printed: cartridge.printed,
+    active: cartridge.active
+  });
+});
+
+routes.get('/activation/:code', async (req, res, next) => {
+  const { code } = req.params;
+
+  const cartridge = await models.Cartridge.findOne({
+    where: { code },
+    attributes: ['id', 'quantity', 'printed', 'active']
+  });
+
+  if (!cartridge) return next(new Error('CARTRIDGE_DOES_NOT_EXIST'));
+
+  return res.json({
+    id: cartridge.id,
+    quantity: cartridge.quantity,
+    printed: cartridge.printed,
+    active: cartridge.active
+  });
+});
+
 // -- GET CATEGORY ------------------------------------------------------
 
 routes.get('', async (req, res) => {
   const cartridges = await models.Cartridge.findAll({
-    order: ['id'],
-    attributes: ['id', 'code', 'quantity', 'balance', 'active', 'lastActive', 'lastDevice']
+    order: ['code'],
+    attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', 'lastDeviceId']
   });
 
   res.json({ items: cartridges });
 });
 
-// -- CREATE CATEGORY ------------------------------------------------------
+// -- UPDATE CATEGORY ------------------------------------------------------
 
-routes.post('', async (req, res, next) => {
-  const { code, quantity, active } = req.body;
-  if (!code) next(new Error('MISSING_PARAMS'));
+routes.patch('/:id', async (req, res, next) => {
+  const { id } = req.params;
+  const { quantity, active } = req.body;
 
-  const cartridge = await models.Cartridge.create({
-    code, quantity, active
+  let result = null;
+
+  if (quantity || active) {
+    const cartridge = await models.Cartridge.update(
+      { quantity, active }, { returning: true, where: { id } }
+    );
+    result = cartridge && cartridge[1] && cartridge[1][0];
+  } else {
+    result = await models.Cartridge.findOne({
+      where: { id },
+      attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', 'lastDeviceId']
+    });
+  }
+
+  if (!result) return next(new Error('WRONG_PARAMS'));
+
+  return res.json({
+    id: result.id,
+    code: result.code,
+    quantity: result.quantity,
+    printed: result.printed,
+    active: result.active,
+    lastActive: result.lastActive,
+    lastDeviceId: result.lastDeviceId
   });
-  res.json({ id: cartridge.id });
 });
 
 
@@ -34,74 +122,6 @@ routes.post('', async (req, res, next) => {
 //   res.sendFile(result);
 // });
 
-
-// // -- UPDATE CATEGORY ------------------------------------------------------
-
-// const updateCategory = async (req, next) => {
-//   const { id } = req.params;
-//   const { num, visible, name } = req.body;
-
-//   let result = null;
-//   if (num || visible || name) {
-//     const category = await models.GalleryCategory.update(
-//       { num, visible, name }, { returning: true, where: { id } }
-//     );
-//     ({ 0: result } = category);
-//   } else {
-//     result = await models.GalleryCategory.findOne({ where: { id }, attributes: ['id'] });
-//   }
-
-//   if (!result) return next(new Error('WRONG_PARAMS'));
-//   req.categoryId = id;
-//   return id;
-// };
-
-// const fileFilterUpdateCategory = async (req, file, next) => {
-//   if (!allowedTypes.includes(file.mimetype)) {
-//     return next(new Error('LIMIT_FILE_TYPES'));
-//   }
-
-//   await updateCategory(req, next);
-
-//   return next(null, true);
-// };
-
-// const uploadUpdateCategory = multer({
-//   fileFilter: fileFilterUpdateCategory,
-//   limits: { fileSize: process.env.APP_MAX_FILE_SIZE },
-//   storage: storageCategory
-// });
-
-// const afterUploadUpdateCategory = async (req, res, next) => {
-//   if (!req.file) await updateCategory(req, next);
-//   next();
-// };
-
-// routes.patch(
-//   '/:id',
-//   uploadUpdateCategory.single('file'),
-//   afterUploadUpdateCategory,
-//   (req, res) => res.json({ id: req.categoryId })
-// );
-
-// // -- DELETE CATEGORY ------------------------------------------------------
-
-// routes.delete(
-//   '/:id',
-//   async (req, res, next) => {
-//     const { id } = req.params;
-
-//     await models.GalleryCategory.destroy({ where: { id } });
-
-//     try {
-//       await fsPromises.unlink(path.join(pathGalleryCategories, id));
-//     } catch (err) {
-//       if (err.code !== 'ENOENT') return next(new Error(err));
-//     }
-
-//     return res.json({ id });
-//   }
-// );
 
 // // --------------------------------------------
 // // --------------------------------------------

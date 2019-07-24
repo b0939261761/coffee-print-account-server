@@ -4,10 +4,10 @@ module.exports = (sequelize, DataTypes) => {
   const Cartridge = sequelize.define('Cartridge', {
     code: DataTypes.STRING,
     quantity: DataTypes.INTEGER,
-    balance: DataTypes.INTEGER,
+    printed: DataTypes.INTEGER,
     active: DataTypes.BOOLEAN,
     lastActive: DataTypes.DATE,
-    lastDevice: DataTypes.STRING
+    lastDeviceId: DataTypes.INTEGER
   }, {});
 
   return Cartridge;

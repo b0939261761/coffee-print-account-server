@@ -14,12 +14,6 @@ app.use(express.json());
 
 app.use('/', require('./routes'));
 
-app.use((err, req, res, next) => {
-  const errorCode = err.code || err.message;
-  const errorMessage = errorCode !== err.message ? err.message : undefined;
-
-  const statusCode = 422;
-  res.status(statusCode).json({ code: errorCode, message: errorMessage });
-});
+app.use((err, req, res, next) => res.status(422).send(err.message));
 
 app.listen(port, () => console.info(`💡 App listening on port ${port}!`));
