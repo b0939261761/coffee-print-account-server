@@ -33,7 +33,13 @@ deploy:
   provider: script
   skip_cleanup: true
   script: bash -c '
-    ssh root@$SSH_HOST "systemctl stop $SERVICE_NAME && rm -rf $DEPLOY_PATH"
-    && rsync --recursive ./* $SSH_USER@$SSH_HOST:$DEPLOY_PATH/ '
+    ssh $SSH_USER@$SSH_HOST "systemctl stop $SERVICE_NAME
+      && rm -rf $DEPLOY_PATH"
+    && rsync --recursive ./* $SSH_USER@$SSH_HOST:$DEPLOY_PATH/
+    && ssh $SSH_USER@$SSH_HOST "
+      cd $APP_PATH
+      && docker-compose run app bash -c \"
+        cd $DOCKER_APP_PATH && npm install && npx sequelize db:migrate \"
+      && systemctl start $SERVICE_NAME"'
   on:
     branch: master
