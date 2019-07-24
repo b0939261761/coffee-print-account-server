@@ -32,8 +32,6 @@ script:
 deploy:
   provider: script
   skip_cleanup: true
-  script: bash -c '
-    ssh root@$SSH_HOST "systemctl stop $coffee-print"
-  '
+  script: bash -c 'ssh root@$SSH_HOST "systemctl stop $coffee-print"'
   on:
     branch: master
