@@ -3,7 +3,17 @@
 const routes = require('express').Router();
 const models = require('../models');
 
-// -- CREATE CATEGORY ------------------------------------------------------
+// -- GET ALL ------------------------------------------------------
+
+routes.get('', async (req, res) => {
+  const cartridges = await models.Cartridge.findAll({
+    order: ['code'],
+    attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', ['lastDeviceId', 'lastDevice']]
+  });
+  res.json(cartridges);
+});
+
+// -- CREATE ------------------------------------------------------
 
 routes.post('', async (req, res, next) => {
   const { quantity, active } = req.body;
@@ -19,7 +29,7 @@ routes.post('', async (req, res, next) => {
     cartridges.push(cartridge.code);
   }
 
-  res.json({ items: cartridges });
+  res.json(cartridges);
 });
 
 // -- DELETE ------------------------------------------------------
@@ -30,8 +40,7 @@ routes.delete('/:id', async (req, res, next) => {
   return res.json({ id });
 });
 
-
-// -- UPDATE STATIC ------------------------------------------------------
+// -- UPDATE STATISTICS ------------------------------------------------------
 
 routes.patch('/statistics/:id', async (req, res, next) => {
   const { id } = req.params;
@@ -52,6 +61,8 @@ routes.patch('/statistics/:id', async (req, res, next) => {
   });
 });
 
+// -- GET ACTIVATION ------------------------------------------------------
+
 routes.get('/activation/:code', async (req, res, next) => {
   const { code } = req.params;
 
@@ -70,18 +81,7 @@ routes.get('/activation/:code', async (req, res, next) => {
   });
 });
 
-// -- GET CATEGORY ------------------------------------------------------
-
-routes.get('', async (req, res) => {
-  const cartridges = await models.Cartridge.findAll({
-    order: ['code'],
-    attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', 'lastDeviceId']
-  });
-
-  res.json({ items: cartridges });
-});
-
-// -- UPDATE CATEGORY ------------------------------------------------------
+// -- UPDATE ------------------------------------------------------
 
 routes.patch('/:id', async (req, res, next) => {
   const { id } = req.params;
@@ -97,7 +97,7 @@ routes.patch('/:id', async (req, res, next) => {
   } else {
     result = await models.Cartridge.findOne({
       where: { id },
-      attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', 'lastDeviceId']
+      attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', ['lastDeviceId', 'lastDevice']]
     });
   }
 
@@ -110,158 +110,8 @@ routes.patch('/:id', async (req, res, next) => {
     printed: result.printed,
     active: result.active,
     lastActive: result.lastActive,
-    lastDeviceId: result.lastDeviceId
+    lastDevice: result.lastDeviceId
   });
 });
-
-
-// -- GET CATEGORY PICTURE ------------------------------------------------------
-
-// routes.get('/categories/:id', async (req, res, next) => {
-//   const result = await models.Cartridge.findOne({ where: { id }, attributes: ['id'] });
-//   res.sendFile(result);
-// });
-
-
-// // --------------------------------------------
-// // --------------------------------------------
-// // --------------------------------------------
-
-// const storagePicture = multer.diskStorage({
-//   destination: (req, file, cb) => cb(null, pathGalleryPictures),
-//   filename: (req, file, cb) => cb(null, req.pictureId.toString())
-// });
-
-// // -- GET PICTURE ------------------------------------------------------
-
-// routes.get('/:galleryCategoryId/pictures', async (req, res, next) => {
-//   const items = await models.GalleryPicture.findAll({
-//     where: { galleryCategoryId: req.params.galleryCategoryId, visible: true },
-//     order: ['num'],
-//     attributes: ['id']
-//   });
-
-//   res.json({ items: items.map(({ id }) => id) });
-// });
-
-
-// // -- GET PICTURE PICTURE ------------------------------------------------------
-
-// routes.get('/pictures/:pictureId', (req, res, next) => {
-//   const fullPath = path.join(pathGalleryPictures, req.params.pictureId);
-
-//   if (!fs.existsSync(fullPath)) return res.sendStatus(404);
-
-//   return res.sendFile(fullPath);
-// });
-
-// // -- CREATE PICTURE ----------------------------------------------------
-
-// const fileFilterCreatePicture = async (req, file, next) => {
-//   if (!allowedTypes.includes(file.mimetype)) {
-//     return next(new Error('LIMIT_FILE_TYPES'));
-//   }
-
-//   const category = await models.GalleryCategory.findOne({
-//     where: { id: req.params.galleryCategoryId }, attributes: ['id']
-//   });
-
-//   if (!category) next(new Error('WRONG_PARAMS'));
-
-//   const { num, visible } = req.body;
-
-//   const picture = await category.createGalleryPicture({ num, visible });
-//   req.pictureId = picture.id;
-
-//   return next(null, true);
-// };
-
-// const uploadCreatePicture = multer({
-//   fileFilter: fileFilterCreatePicture,
-//   limits: { fileSize: process.env.APP_MAX_FILE_SIZE },
-//   storage: storagePicture
-// });
-
-// const afterUploadCreatePicture = (req, res, next) => {
-//   if (!req.file) next(new Error('MISSING_PARAMS'));
-//   next();
-// };
-
-// routes.post(
-//   '/:galleryCategoryId/pictures',
-//   uploadCreatePicture.single('file'),
-//   afterUploadCreatePicture,
-//   (req, res) => res.json({ id: req.pictureId })
-// );
-
-// // -- UPDATE PICTURE ------------------------------------------------------
-
-// const updatePicture = async (req, next) => {
-//   const { id, galleryCategoryId } = req.params;
-//   const { num, visible } = req.body;
-
-//   let result = null;
-//   if (num || visible) {
-//     const picture = await models.GalleryPicture.update(
-//       { num, visible }, { returning: true, where: { id, galleryCategoryId } }
-//     );
-//     ({ 0: result } = picture);
-//   } else {
-//     result = await models.GalleryPicture.findOne({
-//       where: { id, galleryCategoryId }, attributes: ['id']
-//     });
-//   }
-
-//   if (!result) return next(new Error('WRONG_PARAMS'));
-//   req.pictureId = id;
-//   return id;
-// };
-
-// const fileFilterUpdatePicture = async (req, file, next) => {
-//   if (!allowedTypes.includes(file.mimetype)) {
-//     return next(new Error('LIMIT_FILE_TYPES'));
-//   }
-
-//   await updatePicture(req, next);
-
-//   return next(null, true);
-// };
-
-// const uploadUpdatePicture = multer({
-//   fileFilter: fileFilterUpdatePicture,
-//   limits: { fileSize: process.env.APP_MAX_FILE_SIZE },
-//   storage: storagePicture
-// });
-
-// const afterUploadUpdatePicture = async (req, res, next) => {
-//   if (!req.file) await updatePicture(req, next);
-//   next();
-// };
-
-// routes.patch(
-//   '/:galleryCategoryId/pictures/:id',
-//   uploadUpdatePicture.single('file'),
-//   afterUploadUpdatePicture,
-//   (req, res) => res.json({ id: req.pictureId })
-// );
-
-// // -- DELETE PICTURE ------------------------------------------------------
-
-// routes.delete(
-//   '/:galleryCategoryId/pictures/:id',
-//   async (req, res, next) => {
-//     const { id, galleryCategoryId } = req.params;
-
-//     await models.GalleryPicture.destroy({ where: { id, galleryCategoryId } });
-
-//     try {
-//       await fsPromises.unlink(path.join(pathGalleryPictures, id));
-//     } catch (err) {
-//       if (err.code !== 'ENOENT') return next(new Error(err));
-//     }
-
-//     return res.json({ id });
-//   }
-// );
 
 module.exports = routes;
