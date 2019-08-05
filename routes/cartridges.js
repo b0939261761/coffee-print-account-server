@@ -97,7 +97,7 @@ routes.patch('/:id', async (req, res, next) => {
   } else {
     result = await models.Cartridge.findOne({
       where: { id },
-      attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', ['lastDeviceId', 'lastDevice']]
+      attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', 'lastDeviceId']
     });
   }
 
