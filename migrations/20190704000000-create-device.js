@@ -43,7 +43,7 @@ module.exports = {
     });
 
     return queryInterface.sequelize.query(`
-      CREATE TRIGGER ${tableName}_update_at
+      CREATE TRIGGER "${tableName}_update_at"
         BEFORE UPDATE ON "${tableName}"
           FOR EACH ROW EXECUTE PROCEDURE update_at_timestamp()
     `);

@@ -1,5 +1,5 @@
 const tableName = 'Cartridges';
-const funcInsertName = `${tableName}_insert()`;
+const funcInsertName = `${tableName}_insert`;
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
@@ -39,13 +39,13 @@ module.exports = {
     });
 
     await queryInterface.sequelize.query(`
-      CREATE TRIGGER ${tableName}_update_at
+      CREATE TRIGGER "${tableName}_update_at"
         BEFORE UPDATE ON "${tableName}"
           FOR EACH ROW EXECUTE PROCEDURE update_at_timestamp()
     `);
 
     return queryInterface.sequelize.query(`
-      CREATE OR REPLACE FUNCTION ${funcInsertName} RETURNS trigger AS $$
+      CREATE OR REPLACE FUNCTION "${funcInsertName}"() RETURNS trigger AS $$
         BEGIN
           IF NEW.code = '' OR NEW.code IS NULL THEN
             NEW.code := (WITH RECURSIVE serialNumber AS (
@@ -70,16 +70,16 @@ module.exports = {
         END;
         $$ LANGUAGE plpgsql;
 
-      CREATE TRIGGER ${tableName}_insert
+      CREATE TRIGGER "${tableName}_insert"
           BEFORE INSERT ON "${tableName}"
             FOR EACH ROW
-            EXECUTE PROCEDURE ${funcInsertName};
+            EXECUTE PROCEDURE "${funcInsertName}"();
     `);
   },
   down: async queryInterface => {
     await queryInterface.dropTable(tableName);
     return queryInterface.sequelize.query(`
-      DROP FUNCTION IF EXISTS ${funcInsertName};
+      DROP FUNCTION IF EXISTS "${funcInsertName}"();
     `);
   }
 };
