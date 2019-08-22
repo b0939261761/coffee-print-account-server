@@ -115,19 +115,25 @@ routes.patch('/activation', async (req, res, next) => {
 routes.get('', async (req, res) => {
   const sql = `
     SELECT
-        "Cartridges".id,
-        ROW_NUMBER() OVER (PARTITION BY "cartridgeId" ORDER BY "lastActive" DESC) - 1 AS "rowNumber",
-        "Cartridges".code,
-        "Cartridges".active,
-        "Cartridges"."quantityResource",
-        SUM("Statistics"."quantityPrinted") over (PARTITION BY "cartridgeId") AS "quantityPrintedAll",
-        "Statistics"."quantityPrinted",
-        "Devices".code || ' ' ||  "Devices".city || ' (' || "Devices"."description" || ')' AS device,
-        "Statistics"."lastActive"
-      FROM "Cartridges"
-      LEFT JOIN "Statistics" ON "Cartridges".id = "Statistics"."cartridgeId"
-      LEFT JOIN "Devices" ON "Statistics"."deviceId" = "Devices"."id"
-      ORDER BY "Cartridges".active DESC, "Cartridges".code, "Statistics"."lastActive" DESC
+      "Cartridges".id,
+      "Cartridges".code,
+      "Cartridges".active,
+      "Cartridges"."quantityResource",
+      COALESCE(SUM("Statistics"."quantityPrinted"), 0) AS "quantityPrinted",
+      JSONB_AGG(
+        JSON_BUILD_OBJECT(
+          'quantityPrinted', "Statistics"."quantityPrinted",
+          'deviceCode', "Devices".code,
+          'deviceCity', "Devices".city,
+          'deviceDescription', "Devices"."description",
+          'lastActive', "Statistics"."lastActive"
+        ) ORDER BY "Statistics"."lastActive" DESC
+      ) AS devices
+    FROM "Cartridges"
+    LEFT JOIN "Statistics" ON "Cartridges".id = "Statistics"."cartridgeId"
+    LEFT JOIN "Devices" ON "Statistics"."deviceId" = "Devices"."id"
+    GROUP BY "Cartridges".id
+    ORDER BY "Cartridges".active DESC, "Cartridges".code
   `;
 
   const cartridges = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
