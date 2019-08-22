@@ -1,5 +1,3 @@
-'use strict';
-
 const defaultValue = {
   username: process.env.ACCOUNT_SERVER_POSTGRES_USER,
   password: process.env.ACCOUNT_SERVER_POSTGRES_PASSWORD,

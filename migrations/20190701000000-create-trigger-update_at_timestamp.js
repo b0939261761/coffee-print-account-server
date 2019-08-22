@@ -1,5 +1,3 @@
-'use strict';
-
 module.exports = {
   up: queryInterface => queryInterface.sequelize.query(`
     CREATE OR REPLACE FUNCTION update_at_timestamp() RETURNS trigger AS $$

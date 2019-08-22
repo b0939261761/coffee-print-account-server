@@ -1,8 +1,10 @@
-'use strict';
-
 const fs = require('fs');
 const path = require('path');
 const Sequelize = require('sequelize');
+const pg = require('pg');
+
+// https://github.com/sequelize/sequelize/issues/4550
+pg.defaults.parseInt8 = true;
 
 const basename = path.basename(__filename);
 const env = process.env.NODE_ENV || 'development';
