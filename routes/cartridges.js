@@ -55,7 +55,7 @@ routes.patch('/statistics', async (req, res, next) => {
 
   return res.json({
     quantityResource: cartridge.quantityResource,
-    quantityPrinted: +cartridge.quantityPrinted,
+    quantityPrinted: cartridge.quantityPrinted,
     active: cartridge.active
   });
 });
@@ -123,15 +123,16 @@ routes.get('', async (req, res) => {
       JSONB_AGG(
         JSON_BUILD_OBJECT(
           'quantityPrinted', "Statistics"."quantityPrinted",
+          'deviceId', "Statistics"."deviceId",
           'deviceCode', "Devices".code,
           'deviceCity', "Devices".city,
-          'deviceDescription', "Devices"."description",
+          'deviceDescription', "Devices".description,
           'lastActive', "Statistics"."lastActive"
         ) ORDER BY "Statistics"."lastActive" DESC
       ) AS devices
     FROM "Cartridges"
     LEFT JOIN "Statistics" ON "Cartridges".id = "Statistics"."cartridgeId"
-    LEFT JOIN "Devices" ON "Statistics"."deviceId" = "Devices"."id"
+    LEFT JOIN "Devices" ON "Statistics"."deviceId" = "Devices".id
     GROUP BY "Cartridges".id
     ORDER BY "Cartridges".active DESC, "Cartridges".code
   `;
@@ -141,64 +142,57 @@ routes.get('', async (req, res) => {
   res.json(cartridges);
 });
 
-// -- CREATE ------------------------------------------------------
-
-routes.post('', async (req, res, next) => {
-  // const { quantityResource, active } = req.body;
-  // const quantityCartridge = req.body.quantityCartridge || 1;
-
-  // const cartridges = [];
-  // for (let i = 1; i <= quantityCartridge; ++i) {
-  //   // eslint-disable-next-line no-await-in-loop
-  //   const cartridge = await models.Cartridge.create(
-  //     { quantityResource, active }
-  //   );
-
-  //   cartridges.push(cartridge.code);
-  // }
-
-  // res.json(cartridges);
-});
-
 // -- DELETE ------------------------------------------------------
 
 routes.delete('/:id', async (req, res, next) => {
   const { id } = req.params;
-  // await models.Cartridge.destroy({ where: { id } });
-  return res.json({ id });
+  const sql = `DELETE FROM "Cartridges" WHERE id = ${id} RETURNING id`;
+  const { 0: cartridge } = await sequelize.query(sql, { type: sequelize.QueryTypes.DELETE });
+
+  if (!cartridge) return next(new Error('WRONG_PARAMS'));
+
+  return res.json(cartridge);
 });
 
 // -- UPDATE ------------------------------------------------------
 
 routes.patch('/:id', async (req, res, next) => {
-  // const { id } = req.params;
-  // const { quantity, active } = req.body;
+  const { id } = req.params;
+  const { quantityResource, active } = req.body;
 
-  // let result = null;
+  if (!quantityResource && !active) return next(new Error('MISSING_PARAMS'));
 
-  // if (quantity || active) {
-  //   const cartridge = await models.Cartridge.update(
-  //     { quantity, active }, { returning: true, where: { id } }
-  //   );
-  //   result = cartridge && cartridge[1] && cartridge[1][0];
-  // } else {
-  //   result = await models.Cartridge.findOne({
-  //     where: { id },
-  //     attributes: ['id', 'code', 'quantity', 'printed', 'active', 'lastActive', 'lastDeviceId']
-  //   });
-  // }
+  const sql = `
+    UPDATE "Cartridges" SET
+        "quantityResource" = ${quantityResource},
+        active = ${active}
+      WHERE id = ${id}
+      RETURNING id, "quantityResource", active
+  `;
+  const { 0: cartridge } = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
 
-  // if (!result) return next(new Error('WRONG_PARAMS'));
+  if (!cartridge) return next(new Error('WRONG_PARAMS'));
 
-  // return res.json({
-  //   id: result.id,
-  //   code: result.code,
-  //   quantity: result.quantity,
-  //   printed: result.printed,
-  //   active: result.active,
-  //   lastActive: result.lastActive,
-  //   lastDevice: result.lastDeviceId
-  // });
+  return res.json(cartridge);
 });
+
+// -- CREATE ------------------------------------------------------
+
+// routes.post('', async (req, res, next) => {
+// const { quantityResource, active } = req.body;
+// const quantityCartridge = req.body.quantityCartridge || 1;
+
+// const cartridges = [];
+// for (let i = 1; i <= quantityCartridge; ++i) {
+//   // eslint-disable-next-line no-await-in-loop
+//   const cartridge = await models.Cartridge.create(
+//     { quantityResource, active }
+//   );
+
+//   cartridges.push(cartridge.code);
+// }
+
+// res.json(cartridges);
+// });
 
 module.exports = routes;

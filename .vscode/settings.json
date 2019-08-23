@@ -4,7 +4,10 @@
     "titleBar.activeForeground": "#ffffff"
   },
   "cSpell.words": [
+    "JSONB",
+    "LPAD",
     "POSTGRES",
+    "bigint",
     "plpgsql"
   ]
 }
