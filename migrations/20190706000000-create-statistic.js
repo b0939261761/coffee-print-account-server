@@ -66,11 +66,9 @@ module.exports = {
           ELSE
             NEW."quantityPrinted" := OLD."quantityPrinted";
           END IF;
-
           RETURN NEW;
         END;
         $$ LANGUAGE plpgsql;
-
       CREATE TRIGGER "${tableName}_update"
           BEFORE UPDATE ON "${tableName}"
             FOR EACH ROW

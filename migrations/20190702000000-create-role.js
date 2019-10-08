@@ -1,4 +1,4 @@
-const tableName = 'Devices';
+const tableName = 'Roles';
 
 module.exports = {
   up: async (queryInterface, Sequelize) => {
@@ -9,26 +9,10 @@ module.exports = {
         primaryKey: true,
         type: Sequelize.INTEGER
       },
-      code: {
+      name: {
         allowNull: false,
-        type: Sequelize.STRING(5),
-        defaultValue: '',
-        unique: true
-      },
-      city: {
-        allowNull: false,
-        type: Sequelize.STRING(50),
+        type: Sequelize.STRING(40),
         defaultValue: ''
-      },
-      description: {
-        allowNull: false,
-        type: Sequelize.STRING(255),
-        defaultValue: ''
-      },
-      appVersionCode: {
-        allowNull: false,
-        type: Sequelize.INTEGER,
-        defaultValue: 0
       },
       createdAt: {
         allowNull: false,
@@ -42,10 +26,15 @@ module.exports = {
       }
     });
 
-    return queryInterface.sequelize.query(`
+    await queryInterface.sequelize.query(`
       CREATE TRIGGER "${tableName}_update_at"
         BEFORE UPDATE ON "${tableName}"
           FOR EACH ROW EXECUTE PROCEDURE update_at_timestamp()
+    `);
+
+    return queryInterface.sequelize.query(`
+      INSERT INTO "${tableName}" (name)
+        VALUES ('admin'), ('trader'), ('dealer'), ('customer')
     `);
   },
   down: queryInterface => queryInterface.dropTable(tableName)

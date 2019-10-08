@@ -7,7 +7,12 @@ if (process.env.NODE_ENV !== 'production') dotenv.config();
 const app = express();
 const port = process.env.ACCOUNT_SERVER_PORT || 8081;
 
-app.use(cors());
+const corsOptions = {
+  origin: '*',
+  exposedHeaders: ['Access-Token', 'Refresh-Token']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use('/', require('./routes'));
