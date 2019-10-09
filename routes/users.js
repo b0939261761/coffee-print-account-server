@@ -88,11 +88,14 @@ routes.patch('/:userId', async (req, res, next) => {
   const { userId } = req.params;
   const { email, password } = req.body;
 
+  const { salt, hash } = cryptoPassword(password);
+
   const sql = `
       WITH "user" AS (
-          UPDATE "Users" SET
-          email = ${email},
-          password = ${password}
+        UPDATE "Users" SET
+          email = '${email}',
+          salt = '${salt}',
+          hash = '${hash}'
         WHERE id = ${userId}
         RETURNING *
       )
@@ -159,6 +162,39 @@ routes.get('/list', async (req, res) => {
 
   const response = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
 
+  res.json(response);
+});
+
+// -- LIST ------------------------------------------------------
+
+routes.get('/children', async (req, res) => {
+  const { userId, parentId } = req;
+
+  const sql = `
+    WITH RECURSIVE "UsersTree" AS (
+      SELECT
+          id,
+          email,
+          email::TEXT AS sort,
+          "parentId"
+        FROM "Users"
+        WHERE id = ${userId}
+            OR "parentId" IS NOT DISTINCT FROM ${parentId}
+
+      UNION ALL
+
+      SELECT
+          "Users".id,
+          "Users".email,
+          "UsersTree".email || '|' || "Users".email AS sort,
+          "Users"."parentId"
+        FROM "Users"
+        INNER JOIN "UsersTree" ON "Users"."parentId" = "UsersTree".id
+    )
+    SELECT id, email FROM "UsersTree" ORDER BY email
+  `;
+
+  const response = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
   res.json(response);
 });
 
