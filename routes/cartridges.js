@@ -138,27 +138,53 @@ routes.patch('/activation', async (req, res, next) => {
 // -- GET ALL ----------------------------------------------------------------
 
 routes.get('', verifyToken, async (req, res) => {
+  const { isAdmin, userId, parentId } = req;
+
+  const usersTreeId = isAdmin ? 'NULL' : 0;
+
   const sql = `
+    WITH RECURSIVE "UsersTree" AS (
+      SELECT
+          id,
+          email,
+          "parentId"
+        FROM "Users"
+        WHERE id = ${userId}
+          OR "parentId" IS NOT DISTINCT FROM ${parentId}
+
+      UNION ALL
+
+      SELECT
+          "Users".id,
+          "Users".email,
+          "Users"."parentId"
+        FROM "Users"
+        INNER JOIN "UsersTree" ON "Users"."parentId" = "UsersTree".id
+    )
     SELECT
       "Cartridges".id,
       "Cartridges".code,
       "Cartridges".active,
       "Cartridges"."quantityResource",
+      "UsersTree".email as "userEmail",
       COALESCE(SUM("Statistics"."quantityPrinted"), 0) AS "quantityPrinted",
-      JSONB_AGG(
+      COALESCE(JSONB_AGG(
         JSON_BUILD_OBJECT(
           'quantityPrinted', "Statistics"."quantityPrinted",
-          'deviceId', "Statistics"."deviceId",
-          'deviceCode', "Devices".code,
-          'deviceCity', "Devices".city,
-          'deviceDescription', "Devices".description,
+          'id', "Statistics"."deviceId",
+          'code', "Devices".code,
+          'city', "Devices".city,
+          'description', "Devices".description,
           'lastActive', "Statistics"."lastActive"
         ) ORDER BY "Statistics"."lastActive" DESC
-      ) AS devices
+      ) FILTER (WHERE "Devices".id IS NOT NULL), '[]') AS devices
     FROM "Cartridges"
     LEFT JOIN "Statistics" ON "Cartridges".id = "Statistics"."cartridgeId"
     LEFT JOIN "Devices" ON "Statistics"."deviceId" = "Devices".id
-    GROUP BY "Cartridges".id
+    LEFT JOIN "UsersTree" ON "UsersTree".id = "Cartridges"."userId"
+    WHERE "UsersTree".id IS NOT NULL
+      OR "UsersTree".id IS NOT DISTINCT FROM ${usersTreeId}
+    GROUP BY "Cartridges".id, "UsersTree".email
     ORDER BY "Cartridges".active DESC, "Cartridges".code
   `;
 
@@ -171,22 +197,64 @@ routes.get('', verifyToken, async (req, res) => {
 
 routes.patch('/:id', verifyToken, async (req, res, next) => {
   const { id } = req.params;
-  const { quantityResource, active } = req.body;
-
-  if (!quantityResource && !active) return next(new Error('MISSING_PARAMS'));
+  const { quantityResource, active, userId } = req.body;
 
   const sql = `
-    UPDATE "Cartridges" SET
-        "quantityResource" = ${quantityResource},
-        active = ${active}
-      WHERE id = ${id}
-      RETURNING id, "quantityResource", active
+    WITH "Cartridge" AS (
+      UPDATE "Cartridges" SET
+          "quantityResource" = ${quantityResource},
+          active = ${active},
+          "userId" = ${userId}
+        WHERE id = ${id}
+        RETURNING *
+    )
+    SELECT
+      "Cartridge".id,
+      "Cartridge".code,
+      "Cartridge".active,
+      "Cartridge"."quantityResource",
+      "Users".email as "userEmail",
+      COALESCE(SUM("Statistics"."quantityPrinted"), 0) AS "quantityPrinted",
+      COALESCE(JSONB_AGG(
+        JSON_BUILD_OBJECT(
+          'quantityPrinted', "Statistics"."quantityPrinted",
+          'id', "Statistics"."deviceId",
+          'code', "Devices".code,
+          'city', "Devices".city,
+          'description', "Devices".description,
+          'lastActive', "Statistics"."lastActive"
+        ) ORDER BY "Statistics"."lastActive" DESC
+      ) FILTER (WHERE "Devices".id IS NOT NULL), '[]') AS devices
+    FROM "Cartridge"
+    LEFT JOIN "Statistics" ON "Cartridge".id = "Statistics"."cartridgeId"
+    LEFT JOIN "Devices" ON "Statistics"."deviceId" = "Devices".id
+    LEFT JOIN "Users" ON "Users".id = "Cartridge"."userId"
+    GROUP BY "Cartridge".id, "Cartridge".code, "Cartridge".active,
+      "Cartridge"."quantityResource", "Users".email
   `;
   const { 0: cartridge } = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
 
   if (!cartridge) return next(new Error('WRONG_PARAMS'));
 
   return res.json(cartridge);
+});
+
+// -- GET ID ------------------------------------------------------
+
+routes.get('/:cartridgeId', async (req, res, next) => {
+  const { cartridgeId } = req.params;
+
+  const sql = `
+    SELECT id, code, "quantityResource", active, "userId"
+      FROM "Cartridges"
+      WHERE id = ${cartridgeId}
+  `;
+
+  const { 0: response } = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
+
+  if (!response) return next(new Error('WRONG_PARAMS'));
+
+  return res.json(response);
 });
 
 module.exports = routes;

@@ -33,13 +33,12 @@ routes.get('', async (req, res) => {
       "Devices".city,
       "Devices".description,
       "Devices"."appVersionCode",
-      COALESCE(SUM("Statistics"."quantityPrinted"), 0) AS "quantityPrinted",
       "UsersTree".email as "userEmail",
+      COALESCE(SUM("Statistics"."quantityPrinted"), 0) AS "quantityPrinted",
       COALESCE(JSONB_AGG(
         JSON_BUILD_OBJECT(
           'id', "Cartridges".id,
           'code', "Cartridges".code,
-          'quantityResource', "Cartridges"."quantityResource",
           'quantityPrinted', "Statistics"."quantityPrinted",
           'lastActive', "Statistics"."lastActive"
         ) ORDER BY "Statistics"."lastActive" DESC
@@ -80,8 +79,8 @@ routes.patch('/:deviceId', async (req, res, next) => {
         "Device".city,
         "Device".description,
         "Device"."appVersionCode",
-        COALESCE(SUM("Statistics"."quantityPrinted"), 0) AS "quantityPrinted",
         "Users".email as "userEmail",
+        COALESCE(SUM("Statistics"."quantityPrinted"), 0) AS "quantityPrinted",
         COALESCE(JSONB_AGG(
           JSON_BUILD_OBJECT(
             'id', "Cartridges".id,
@@ -95,8 +94,8 @@ routes.patch('/:deviceId', async (req, res, next) => {
       LEFT JOIN "Statistics" ON "Device".id = "Statistics"."deviceId"
       LEFT JOIN "Cartridges" ON "Statistics"."cartridgeId" = "Cartridges"."id"
       LEFT JOIN "Users" ON "Users".id = "Device"."userId"
-      GROUP BY "Device".id, "Device".code, "Device".city, "Device".description, "Device"."appVersionCode", "Users".email
-      ORDER BY "Device".code
+      GROUP BY "Device".id, "Device".code, "Device".city,
+        "Device".description, "Device"."appVersionCode", "Users".email
   `;
   const { 0: cartridge } = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
 
