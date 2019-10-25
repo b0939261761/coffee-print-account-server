@@ -1,13 +1,15 @@
+const functionName = 'updateAtTimestamp';
+
 module.exports = {
   up: queryInterface => queryInterface.sequelize.query(`
-    CREATE OR REPLACE FUNCTION update_at_timestamp() RETURNS trigger AS $$
+    CREATE OR REPLACE FUNCTION "${functionName}"() RETURNS TRIGGER AS $$
       BEGIN
-        NEW."updatedAt" := current_timestamp;
+        NEW."updatedAt" := CURRENT_TIMESTAMP;
         RETURN NEW;
       END;
-      $$ LANGUAGE plpgsql
+      $$ LANGUAGE PLPGSQL;
   `),
-  down: queryInterface => queryInterface.sequelize.query(`
-    DROP FUNCTION IF EXISTS update_at_timestamp() CASCADE
+  down: ({ sequelize }) => sequelize.query(`
+    DROP FUNCTION IF EXISTS "${functionName}"() CASCADE;
   `)
 };

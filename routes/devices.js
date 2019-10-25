@@ -39,6 +39,7 @@ routes.get('', async (req, res) => {
         JSON_BUILD_OBJECT(
           'id', "Cartridges".id,
           'code', "Cartridges".code,
+          'quantityResource', "Cartridges"."quantityResource",
           'quantityPrinted', "Statistics"."quantityPrinted",
           'lastActive', "Statistics"."lastActive"
         ) ORDER BY "Statistics"."lastActive" DESC

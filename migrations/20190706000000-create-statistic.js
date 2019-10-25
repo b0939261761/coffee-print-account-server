@@ -1,83 +1,44 @@
 const tableName = 'Statistics';
-const funcUpdateName = `${tableName}_update`;
+const funcUpdateName = `${tableName}Update`;
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable(tableName, {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER
-      },
-      deviceId: {
-        allowNull: false,
-        type: Sequelize.INTEGER,
-        references: {
-          model: 'Devices',
-          key: 'id'
-        },
-        onDelete: 'CASCADE'
-      },
-      cartridgeId: {
-        allowNull: false,
-        type: Sequelize.INTEGER,
-        references: {
-          model: 'Cartridges',
-          key: 'id'
-        },
-        onDelete: 'CASCADE'
-      },
-      quantityPrinted: {
-        allowNull: false,
-        type: Sequelize.INTEGER,
-        defaultValue: 0
-      },
-      lastActive: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
-      }
-    });
+  up: ({ sequelize }) => sequelize.query(`
+    CREATE TABLE "${tableName}" (
+      id SERIAL PRIMARY KEY,
+      "deviceId" INTEGER NOT NULL REFERENCES "Devices" (id) ON DELETE CASCADE,
+      "cartridgeId" INTEGER NOT NULL REFERENCES "Cartridges" (id) ON DELETE CASCADE,
+      "datePrinted" DATE NOT NULL DEFAULT CURRENT_DATE,
+      "quantityPrinted" INTEGER NOT NULL DEFAULT 0,
+      "lastActive" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE ("deviceId", "cartridgeId", "datePrinted")
+    );
 
-    await queryInterface.addIndex(tableName, ['deviceId', 'cartridgeId'], { unique: true });
+    CREATE TRIGGER "${tableName}UpdateAt"
+      BEFORE UPDATE ON "${tableName}"
+        FOR EACH ROW EXECUTE PROCEDURE "updateAtTimestamp"();
 
-    await queryInterface.sequelize.query(`
-      CREATE TRIGGER "${tableName}_update_at"
-        BEFORE UPDATE ON "${tableName}"
-          FOR EACH ROW EXECUTE PROCEDURE update_at_timestamp()
-    `);
-    return queryInterface.sequelize.query(`
-      CREATE OR REPLACE FUNCTION "${funcUpdateName}"() RETURNS trigger AS $$
-        BEGIN
-          IF NEW."quantityPrinted" > 0 THEN
-            NEW."quantityPrinted" := NEW."quantityPrinted" + OLD."quantityPrinted";
-            NEW."lastActive" := CURRENT_TIMESTAMP;
-          ELSE
-            NEW."quantityPrinted" := OLD."quantityPrinted";
-          END IF;
-          RETURN NEW;
-        END;
-        $$ LANGUAGE plpgsql;
-      CREATE TRIGGER "${tableName}_update"
-          BEFORE UPDATE ON "${tableName}"
-            FOR EACH ROW
-              WHEN (NEW."quantityPrinted" IS NOT NULL OR NEW."lastActive" IS NOT NULL)
-            EXECUTE PROCEDURE "${funcUpdateName}"();
-    `);
-  },
-  down: async queryInterface => {
-    await queryInterface.dropTable(tableName);
-    return queryInterface.sequelize.query(`DROP FUNCTION IF EXISTS "${funcUpdateName}"();`);
-  }
+    CREATE OR REPLACE FUNCTION "${funcUpdateName}"() RETURNS TRIGGER AS $$
+      BEGIN
+        IF NEW."quantityPrinted" > 0 THEN
+          NEW."quantityPrinted" := NEW."quantityPrinted" + OLD."quantityPrinted";
+          NEW."lastActive" := CURRENT_TIMESTAMP;
+        ELSE
+          NEW."quantityPrinted" := OLD."quantityPrinted";
+        END IF;
+        RETURN NEW;
+      END;
+      $$ LANGUAGE PLPGSQL;
+
+    CREATE TRIGGER "${tableName}Update"
+      BEFORE UPDATE ON "${tableName}"
+        FOR EACH ROW
+          WHEN (NEW."quantityPrinted" IS NOT NULL OR NEW."lastActive" IS NOT NULL)
+        EXECUTE PROCEDURE "${funcUpdateName}"();
+  `),
+  down: ({ sequelize }) => sequelize.query(`
+    DROP TABLE IF EXISTS "${tableName}";
+    DROP FUNCTION IF EXISTS "${funcUpdateName}"();
+  `)
 };

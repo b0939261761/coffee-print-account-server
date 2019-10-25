@@ -1,73 +1,28 @@
 const tableName = 'Devices';
 
 module.exports = {
-  up: async (queryInterface, Sequelize) => {
-    await queryInterface.createTable(tableName, {
-      id: {
-        allowNull: false,
-        autoIncrement: true,
-        primaryKey: true,
-        type: Sequelize.INTEGER
-      },
-      userId: {
-        allowNull: true,
-        type: Sequelize.INTEGER,
-        references: {
-          model: 'Users',
-          key: 'id'
-        },
-        onDelete: 'CASCADE'
-      },
-      code: {
-        allowNull: false,
-        type: Sequelize.STRING(5),
-        defaultValue: '',
-        unique: true
-      },
-      city: {
-        allowNull: false,
-        type: Sequelize.STRING(50),
-        defaultValue: ''
-      },
-      description: {
-        allowNull: false,
-        type: Sequelize.STRING(255),
-        defaultValue: ''
-      },
-      appVersionCode: {
-        allowNull: false,
-        type: Sequelize.INTEGER,
-        defaultValue: 0
-      },
-      createdAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
-      },
-      updatedAt: {
-        allowNull: false,
-        type: Sequelize.DATE,
-        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
-      }
-    });
+  up: ({ sequelize }) => {
+    const devices = Array.from(
+      { length: 1000 }, (_, i) => `('1${(i + 1).toString().padStart(4, '0')}')`
+    );
+    return sequelize.query(`
+      CREATE TABLE "${tableName}" (
+        id SERIAL PRIMARY KEY,
+        "userId" INTEGER REFERENCES "Users" (id) ON DELETE CASCADE,
+        "code" VARCHAR(5) NOT NULL DEFAULT '' UNIQUE,
+        "city" VARCHAR(50) NOT NULL DEFAULT '',
+        "description" VARCHAR(255) NOT NULL DEFAULT '',
+        "appVersionCode" INTEGER NOT NULL DEFAULT 0,
+        "createdAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
 
-    await queryInterface.sequelize.query(`
-      CREATE TRIGGER "${tableName}_update_at"
+      CREATE TRIGGER "${tableName}UpdateAt"
         BEFORE UPDATE ON "${tableName}"
-          FOR EACH ROW EXECUTE PROCEDURE update_at_timestamp()
-    `);
+          FOR EACH ROW EXECUTE PROCEDURE "updateAtTimestamp"();
 
-    // ---------------------------------
-
-    const devices = [];
-    for (let i = 1; i <= 1000; ++i) {
-      devices.push(`('1${(i).toString().padStart(4, '0')}', 'Устройство: ${i}')`);
-    }
-
-    return queryInterface.sequelize.query(`
-      INSERT INTO "${tableName}" (code, description)
-        VALUES ${devices.join(',')}
+      INSERT INTO "${tableName}" (code) VALUES ${devices.join(',')}
     `);
   },
-  down: queryInterface => queryInterface.dropTable(tableName)
+  down: ({ sequelize }) => sequelize.query(`DROP TABLE IF EXISTS "${tableName}";`)
 };

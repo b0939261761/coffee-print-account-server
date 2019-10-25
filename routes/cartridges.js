@@ -32,11 +32,13 @@ routes.get('/activation/:code', async (req, res, next) => res.json({
 // --- Костыль версий 3.1.12 - роут перехал в statistic
 routes.patch('/statistics', async (req, res, next) => {
   const {
-    deviceId, cartridgeId, quantityPrinted = 0, appVersionCode = ''
+    deviceId, cartridgeId, quantityPrinted = 0, appVersionCode = 0
   } = req.body;
 
   if (!cartridgeId) return next(new Error('CARTRIDGE_DOES_NOT_EXIST'));
   if (!deviceId) return next(new Error('DEVICE_DOES_NOT_EXIST'));
+
+  const datePrinted = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
 
   const sql = `
     WITH
@@ -49,10 +51,10 @@ routes.patch('/statistics', async (req, res, next) => {
           WHERE id = ${cartridgeId}
       ),
       statistic(id, "cartridgeId", "quantityPrinted") AS (
-        INSERT INTO "Statistics" ("deviceId", "cartridgeId", "quantityPrinted")
-          SELECT "deviceId", "cartridgeId", ${quantityPrinted} FROM cartridge
+        INSERT INTO "Statistics" ("deviceId", "cartridgeId", "datePrinted", "quantityPrinted")
+          SELECT "deviceId", "cartridgeId", '${datePrinted}', ${quantityPrinted} FROM cartridge
             CROSS JOIN device
-          ON CONFLICT ("deviceId", "cartridgeId")
+          ON CONFLICT ("deviceId", "cartridgeId", "datePrinted")
             DO UPDATE SET "quantityPrinted" = EXCLUDED."quantityPrinted"
           RETURNING id, "cartridgeId", "quantityPrinted"
       )
