@@ -90,10 +90,12 @@ routes.patch('/statistics', async (req, res, next) => {
 // -- GET ACTIVATION ------------------------------------------------------
 // --- Костыль версий 3.1.12 - роут перехал в statistic
 routes.patch('/activation', async (req, res, next) => {
-  const { code, deviceId, appVersionCode = '' } = req.body;
+  const { code, deviceId, appVersionCode = 0 } = req.body;
 
   if (!code) return next(new Error('CARTRIDGE_DOES_NOT_EXIST'));
   if (!deviceId) return next(new Error('DEVICE_DOES_NOT_EXIST'));
+
+  const datePrinted = new Date().toISOString().slice(0, 10); // yyyy-MM-dd
 
   const sql = `
     WITH
@@ -113,9 +115,9 @@ routes.patch('/activation', async (req, res, next) => {
           LIMIT 1
       ),
       statistic AS (
-        INSERT INTO "Statistics" ("deviceId", "cartridgeId")
-        SELECT "deviceId", id FROM cartridge CROSS JOIN device
-          ON CONFLICT ("deviceId", "cartridgeId") DO NOTHING
+        INSERT INTO "Statistics" ("deviceId", "cartridgeId", "datePrinted")
+        SELECT "deviceId", id, '${datePrinted}' FROM cartridge CROSS JOIN device
+          ON CONFLICT ("deviceId", "cartridgeId", "datePrinted") DO NOTHING
       )
       SELECT *, (SELECT "deviceId" FROM device) AS "deviceId" FROM cartridge
   `;
