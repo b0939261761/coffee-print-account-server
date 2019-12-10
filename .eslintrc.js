@@ -23,6 +23,10 @@ module.exports = {
     'no-unused-vars': ['error', { argsIgnorePattern: '^(req|res|next)$' }],
 
     'no-empty':  ['error', { allowEmptyCatch: true }],
+
+    'no-underscore-dangle': ['error', { allowAfterThis: true }],
+
+    'import/extensions': ['error', 'ignorePackages'],
   },
   parserOptions: {
     parser: 'babel-eslint'

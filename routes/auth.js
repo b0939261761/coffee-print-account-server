@@ -1,71 +1,58 @@
-const routes = require('express').Router();
-const { comparePassword } = require('../utils/password');
-const { createTokens, getDataToken } = require('../utils/token');
-const { sequelize } = require('../models');
-const verifyToken = require('./verifyToken');
+import express from 'express';
+import { catchAsyncRoute } from '../utils/tools.js';
+import { comparePassword } from '../utils/password.js';
+import { createTokens, getDataToken } from '../utils/token.js';
+import verifyToken from './verifyToken.js';
+import { getUserById, getUserByEmail, setUserToken } from '../db/index.js';
 
-const updateToken = async ({ userId, token }) => {
-  const sql = `UPDATE "Users" SET token = '${token}' WHERE id = ${userId} RETURNING id`;
-  const { 0: response } = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
-  return response;
-};
+const routes = express.Router();
+
+// ---------------------------
 
 const generateHeaders = async ({ userId, roleId }) => {
   const { accessToken, refreshToken } = createTokens({ userId, roleId });
-
-  if (!await updateToken({ userId, token: refreshToken })) return false;
+  if (!await setUserToken({ userId, token: refreshToken })) return false;
   return { 'Access-Token': accessToken, 'Refresh-Token': refreshToken };
+};
+
+// ---------------------------
+
+const sendHeaders = async ({ user, res }) => {
+  const headers = await generateHeaders(user);
+  if (!headers) return false;
+  res.set(headers).sendStatus(204);
+  return true;
 };
 
 // -- GET ALL ----------------------------------------------------------------
 
-routes.post('/login', async (req, res) => {
-  const { username, password } = req.body;
+routes.post('/login', catchAsyncRoute(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await getUserByEmail(email);
 
-  const sql = `
-    SELECT id AS "userId", salt, hash, "roleId"
-      FROM "Users"
-      WHERE email = '${username}'
-  `;
-
-  const { 0: user } = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
-
-  if (user && comparePassword({ password, salt: user.salt, hash: user.hash })) {
-    const headers = await generateHeaders(user);
-    if (headers) return res.set(headers).sendStatus(204);
-  }
-
-  return res.status('400').send('FAIL_AUTH');
-});
+  if (!user
+    || !comparePassword({ password, salt: user.salt, hash: user.hash })
+    || !await sendHeaders({ user, res })) res.status('400').send('FAIL_AUTH');
+}));
 
 // -- LOGOUT -------------------------------------------------------------
 
-routes.post('/logout', verifyToken, async (req, res) => {
-  await updateToken({ userId: req.userId, token: '' });
-  return res.sendStatus('204');
-});
+routes.post('/logout', verifyToken, catchAsyncRoute(async (req, res) => {
+  await setUserToken({ userId: req.user.userId, token: '' });
+  res.sendStatus('204');
+}));
 
 // -- TOKEN ----------------------------------------------------------------
 
-routes.get('/token', async (req, res) => {
+routes.get('/token', catchAsyncRoute(async (req, res) => {
   const dataToken = getDataToken({ token: req.header('Authorization'), type: 'refresh' });
+  const user = dataToken && await getUserById(dataToken.userId);
 
-  if (dataToken) {
-    const sql = `
-      SELECT id AS "userId", token, "roleId"
-        FROM "Users"
-        WHERE id = '${dataToken.userId}'
-    `;
-
-    const { 0: user } = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
-    if (user && user.token === dataToken.token) {
-      const headers = await generateHeaders(user);
-      if (headers) return res.set(headers).sendStatus(204);
-    }
+  if (!user || user.token !== dataToken.token || !await sendHeaders({ user, res })) {
+    res.status('400').send('REFRESH_TOKEN_INVALID');
   }
+}));
 
-  return res.status('400').send('REFRESH_TOKEN_INVALID');
-});
+// ---------------------------
 
-
-module.exports = routes;
+export default routes;

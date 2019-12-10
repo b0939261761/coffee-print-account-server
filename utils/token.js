@@ -1,7 +1,8 @@
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 const ACCESS_EXP = 60 * 60;
 const REFRESH_EXP = 24 * 60 * 60;
+
 const secret = process.env.ACCOUNT_SERVER_JWT;
 
 const createExp = exp => Math.floor(new Date().getTime() / 1000) + exp;
@@ -18,12 +19,12 @@ const createRefreshToken = ({ userId }) => createToken({
   userId, type: 'refresh', exp: createExp(REFRESH_EXP)
 });
 
-const createTokens = user => ({
+export const createTokens = user => ({
   accessToken: createAccessToken(user),
   refreshToken: createRefreshToken(user)
 });
 
-const getDataToken = ({ token: tokenTmp, type }) => {
+export const getDataToken = ({ token: tokenTmp, type }) => {
   const token = tokenTrim(tokenTmp);
   try {
     const data = jwt.verify(token, secret);
@@ -32,7 +33,7 @@ const getDataToken = ({ token: tokenTmp, type }) => {
   return false;
 };
 
-module.exports = {
+export default {
   createTokens,
   getDataToken
 };

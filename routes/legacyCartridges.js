@@ -4,11 +4,15 @@ import { setStatistic, getStatistic } from '../db/index.js';
 
 const routes = express.Router();
 
+
+// --- Костыль версий 3.1.12 - роут перехал в statistic
+// !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 // ---------------------------------------------------------------------------
 // -- UPDATE STATISTICS ------------------------------------------------------
 // ---------------------------------------------------------------------------
 
-routes.patch('', catchAsyncRoute(async (req, res, next) => {
+routes.patch('/statistics', catchAsyncRoute(async (req, res, next) => {
   if (!req.body.cartridgeId) return next(new Error('CARTRIDGE_DOES_NOT_EXIST'));
   if (!req.body.deviceId) return next(new Error('DEVICE_DOES_NOT_EXIST'));
 
@@ -33,7 +37,7 @@ routes.patch('', catchAsyncRoute(async (req, res, next) => {
 
 // -- GET ACTIVATION ------------------------------------------------------
 
-routes.get('', catchAsyncRoute(async (req, res, next) => {
+routes.get('/activation', catchAsyncRoute(async (req, res, next) => {
   if (!req.body.code) return next(new Error('CARTRIDGE_DOES_NOT_EXIST'));
   if (!req.body.deviceId) return next(new Error('DEVICE_DOES_NOT_EXIST'));
 

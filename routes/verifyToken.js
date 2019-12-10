@@ -1,15 +1,16 @@
-const { getDataToken } = require('../utils/token');
+import { getDataToken } from '../utils/token.js';
 
-module.exports = (req, res, next) => {
+export default (req, res, next) => {
   const data = getDataToken({ token: req.header('Authorization'), type: 'access' });
 
   if (data) {
     const { roleId } = data;
-
-    req.roleId = roleId;
-    req.isAdmin = roleId === 1;
-    req.userId = req.isAdmin ? 0 : data.userId;
-    req.parentId = req.isAdmin ? 'NULL' : 0;
+    const isAdmin = roleId === 1;
+    req.user = {
+      userId: isAdmin ? 0 : data.userId,
+      parentId: isAdmin ? null : 0,
+      roleId: isAdmin ? 0 : roleId
+    };
     return next();
   }
 

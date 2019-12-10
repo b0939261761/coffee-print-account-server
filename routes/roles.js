@@ -1,21 +1,11 @@
-const routes = require('express').Router();
-const { sequelize } = require('../models');
+import express from 'express';
+import { catchAsyncRoute } from '../utils/tools.js';
+import { getRoles } from '../db/index.js';
+
+const routes = express.Router();
 
 // -- GET ALL ----------------------------------------------------------------
 
-routes.get('', async (req, res) => {
-  const roleId = req.isAdmin ? 0 : req.roleId;
+routes.get('', catchAsyncRoute(async (req, res) => res.json(await getRoles(req.user.roleId))));
 
-  const sql = `
-    SELECT id, name
-      FROM "Roles"
-      WHERE id > ${roleId}
-      ORDER BY id
-  `;
-
-  const response = await sequelize.query(sql, { type: sequelize.QueryTypes.SELECT });
-
-  res.json(response);
-});
-
-module.exports = routes;
+export default routes;
