@@ -56,6 +56,12 @@ routes.get('', catchAsyncRoute(async (req, res, next) => {
   });
 }));
 
+// -- REPORT ------------------------------------------------------
+
+routes.get('/report', catchAsyncRoute(async (req, res, next) => {
+  res.json({ status: true });
+}));
+
 // ------------------------------------------------------
 
 export default routes;
